@@ -1,5 +1,6 @@
 #pragma once
 #include "art_models.h"
+#include "affix-base/serializable.h"
 
 namespace art_generator
 {
@@ -9,10 +10,4 @@ namespace art_generator
 		double m_y = 0;
 	};
 
-	class trainer
-	{
-	private:
-		std::vector<training_set> m_training_sets;
-
-	};
 }

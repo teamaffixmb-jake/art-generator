@@ -1,5 +1,6 @@
 #pragma once
 #include "aurora-v4/aurora.h"
+#include "affix-base/files.h"
 
 namespace art_generator
 {
