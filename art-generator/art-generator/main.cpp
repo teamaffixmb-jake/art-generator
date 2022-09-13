@@ -57,7 +57,7 @@ void train_model(
 	element_vector::start();
 	parameter_vector::start();
 
-	std::vector<affix_base::threading::persistent_thread> l_threads(std::thread::hardware_concurrency() / 2);
+	std::vector<affix_base::threading::persistent_thread> l_threads(1);
 
 	parallel_executor::startup(l_threads);
 
@@ -84,21 +84,21 @@ void train_model(
 	auto l_loss = mean_squared_error(l_y, pointers(l_desired_y))->depend();
 
 	element_vector l_element_vector = element_vector::stop();
-	parameter_vector l_parameter_vector = parameter_vector::stop(-0.1, 0.1);
+	parameter_vector l_parameter_vector = parameter_vector::stop(-1, 1);
 
 	if (import_params(l_parameter_vector))
 		std::cout << "IMPORTED PARAMETER VECTOR FROM FILE." << std::endl;
 	else
 		std::cout << "FAILED TO IMPORT PARAMETER VECTOR FROM FILE." << std::endl;
 
-	gradient_descent_with_momentum l_optimizer(l_parameter_vector, 0.2, 0.9);
+	gradient_descent_with_momentum l_optimizer(l_parameter_vector, false, 0.2, 0.9);
 
 	std::vector<state_gradient_pair*> l_flattened_input;
 
 	for (auto& l_thread_specific_x : l_x)
 		l_flattened_input = concat(l_flattened_input, flatten(pointers(l_thread_specific_x)));
 
-	gradient_descent_with_momentum l_input_optimizer(l_flattened_input, 0.2, 0.9);
+	gradient_descent_with_momentum l_input_optimizer(l_flattened_input, true, 200, 0.9);
 
 	size_t l_machine_training_set_generation_interval = 100;
 	size_t l_export_parameter_vector_interval = 100;
@@ -122,16 +122,17 @@ void train_model(
 					l_desired_y[i].m_state = 0; // SIGNAL THAT WE WANT IT TO LOOK LIKE A HUMAN MADE THE ART
 				}
 
-				double l_cost = 100;
+				double l_cost_momentum = 100000;
 
-				for (int l_generation_epoch = 0; l_cost > 0.1; l_generation_epoch++)
+				for (int l_generation_epoch = 0; l_cost_momentum > 0.1; l_generation_epoch++)
 				{
 					l_element_vector.fwd();
 					l_loss.m_partial_gradient = 1;
-					l_cost = l_loss.m_state;
+					l_cost_momentum = 0.99 * l_cost_momentum + 0.01 * l_loss.m_state;
 					l_element_vector.bwd();
 					l_input_optimizer.update();
-					std::cout << "MACHINE TRAINING SET GENERATION COST: " << l_cost << std::endl;
+					l_input_optimizer.m_learn_rate = 20.0 * std::log(l_cost_momentum);
+					std::cout << "MACHINE TRAINING SET GENERATION COST MOMENTUM: " << l_cost_momentum << std::endl;
 				}
 
 				for (auto& l_thread_specific_x : l_x)
