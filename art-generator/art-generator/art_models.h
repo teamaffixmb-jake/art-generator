@@ -14,12 +14,12 @@ namespace art_generator
 		// of values inputted into the convolution
 		auto l_y = hadamard(a_x, parameters(a_x.size(), a_x[0].size(), a_x[0][0].size()));
 		l_y = bias(l_y);
-		auto l_convolved_3d = convolve(l_y, parameters(3, 200, 200), 200);
+		auto l_convolved_3d = convolve(l_y, parameters(3, 50, 50), 50);
 		l_convolved_3d = leaky_relu(l_convolved_3d, 0.3);
 		
 		auto l_flattened = flatten(l_convolved_3d);
 
-		std::vector<size_t> l_tnn_dimensions = { 16, 1 };
+		std::vector<size_t> l_tnn_dimensions = { l_flattened.size() / 2, 1};
 
 		for (const auto& l_dimension : l_tnn_dimensions)
 		{

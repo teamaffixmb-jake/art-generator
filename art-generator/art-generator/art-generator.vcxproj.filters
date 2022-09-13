@@ -23,11 +23,5 @@
     <ClInclude Include="art_models.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="train_model.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="generate_art.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

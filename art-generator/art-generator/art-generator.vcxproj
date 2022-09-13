@@ -171,8 +171,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="art_models.h" />
-    <ClInclude Include="generate_art.h" />
-    <ClInclude Include="train_model.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
