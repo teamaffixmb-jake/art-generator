@@ -10,16 +10,16 @@ namespace art_generator
 	{
 		using namespace aurora;
 
-		auto l_y = convolve(a_x, parameters(3, 5, 5), 5);
-		l_y = average_pool(l_y, 5, 5);
-		l_y = leaky_relu(l_y, 0.3);
-		l_y = convolve({ l_y }, parameters(1, 3, 3), 3);
-		l_y = average_pool(l_y, 2, 2);
-		l_y = leaky_relu(l_y, 0.3);
+		// First we add a bias for positional differentiation 
+		// of values inputted into the convolution
+		auto l_y = hadamard(a_x, parameters(a_x.size(), a_x[0].size(), a_x[0][0].size()));
+		l_y = bias(l_y);
+		auto l_convolved_3d = convolve(l_y, parameters(3, 200, 200), 200);
+		l_convolved_3d = leaky_relu(l_convolved_3d, 0.3);
 		
-		auto l_flattened = flatten(l_y);
+		auto l_flattened = flatten(l_convolved_3d);
 
-		std::vector<size_t> l_tnn_dimensions = { l_flattened.size() / 2, 1 };
+		std::vector<size_t> l_tnn_dimensions = { 16, 1 };
 
 		for (const auto& l_dimension : l_tnn_dimensions)
 		{

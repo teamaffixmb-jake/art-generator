@@ -3,9 +3,11 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-# Project-specific training sets
+# Project-specific files
 raw-data/*
 processed-data/*
+cropped-data/*
+art-generator/art-generator/parameter_vector.bin
 
 # User-specific files
 *.rsuser

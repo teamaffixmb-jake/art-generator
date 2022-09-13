@@ -36,31 +36,28 @@ namespace data_preprocessor
             }
         }
 
-        List<List<List<int>>> ConvertImage(Image a_image)
+        List<List<List<double>>> ConvertImage(Image a_image)
         {
-            List<List<List<int>>> l_result = new List<List<List<int>>>();
-
-            int l_acceptable_processed_height = 100;
-            int l_acceptable_processed_width = 100;
+            List<List<List<double>>> l_result = new List<List<List<double>>>();
 
             // Add R, G, B channels
-            l_result.Add(new List<List<int>>());
-            l_result.Add(new List<List<int>>());
-            l_result.Add(new List<List<int>>());
+            l_result.Add(new List<List<double>>());
+            l_result.Add(new List<List<double>>());
+            l_result.Add(new List<List<double>>());
 
             // Add labels for the individual channel matrices
-            List<List<int>> l_red_matrix = l_result[0];
-            List<List<int>> l_green_matrix = l_result[1];
-            List<List<int>> l_blue_matrix = l_result[2];
+            List<List<double>> l_red_matrix = l_result[0];
+            List<List<double>> l_green_matrix = l_result[1];
+            List<List<double>> l_blue_matrix = l_result[2];
 
             Bitmap l_bitmap = new Bitmap(a_image);
 
-            for (int i = 0; i < l_acceptable_processed_height; i++)
+            for (int i = 0; i < a_image.Height; i++)
             {
-                l_red_matrix.Add(new List<int>());
-                l_green_matrix.Add(new List<int>());
-                l_blue_matrix.Add(new List<int>());
-                for (int j = 0; j < l_acceptable_processed_width; j++)
+                l_red_matrix.Add(new List<double>());
+                l_green_matrix.Add(new List<double>());
+                l_blue_matrix.Add(new List<double>());
+                for (int j = 0; j < a_image.Width; j++)
                 {
                     Color l_color = l_bitmap.GetPixel(j, i);
                     l_red_matrix[i].Add((int)l_color.R);
@@ -72,16 +69,16 @@ namespace data_preprocessor
             return l_result;
 
         }
-
-        void WriteProcessedImageToFile(string a_file_path, List<List<List<int>>> a_processed_image)
+        void WriteProcessedImageToFile(string a_file_path, List<List<List<double>>> a_processed_image)
         {
             BinaryWriter l_writer = new BinaryWriter(new FileStream(a_file_path, FileMode.Create));
-            l_writer.Write(a_processed_image[0].Count);
-            l_writer.Write(a_processed_image[0][0].Count);
+            l_writer.Write(a_processed_image.Count);
             for (int i = 0; i < a_processed_image.Count; i++)
             {
+                l_writer.Write(a_processed_image[i].Count);
                 for (int j = 0; j < a_processed_image[0].Count; j++)
                 {
+                    l_writer.Write(a_processed_image[i][j].Count);
                     for (int k = 0; k < a_processed_image[0][0].Count; k++)
                     {
                         l_writer.Write(a_processed_image[i][j][k]);
