@@ -19,7 +19,7 @@ namespace art_generator
 		
 		auto l_flattened = flatten(l_convolved_3d);
 
-		std::vector<size_t> l_tnn_dimensions = { l_flattened.size() / 2, 1};
+		std::vector<size_t> l_tnn_dimensions = { l_flattened.size() / 2 };
 
 		for (const auto& l_dimension : l_tnn_dimensions)
 		{
@@ -27,6 +27,10 @@ namespace art_generator
 			l_flattened = bias(l_flattened);
 			l_flattened = leaky_relu(l_flattened, 0.3);
 		}
+
+		l_flattened = weight_junction(l_flattened, 1);
+		l_flattened = bias(l_flattened);
+		l_flattened = sigmoid(l_flattened);
 
 		return l_flattened[0];
 
