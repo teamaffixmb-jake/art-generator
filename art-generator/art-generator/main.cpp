@@ -8,7 +8,7 @@
 typedef std::vector<std::vector<std::vector<double>>> training_set_input;
 
 bool import_params(
-	aurora::parameter_vector& a_parameter_vector
+	aurora::latent::parameter_vector & a_parameter_vector
 )
 {
 	std::vector<double> l_exported_params;
@@ -22,7 +22,7 @@ bool import_params(
 }
 
 bool export_params(
-	const aurora::parameter_vector& a_parameter_vector
+	const aurora::latent::parameter_vector& a_parameter_vector
 )
 {
 	std::vector<double> l_exported_params;
@@ -36,6 +36,7 @@ void train_model(
 )
 {
 	using namespace aurora;
+	using namespace latent;
 
 	std::vector<training_set_input> l_human_training_set_inputs;
 	std::vector<training_set_input> l_machine_training_set_inputs;
@@ -57,14 +58,12 @@ void train_model(
 	element_vector::start();
 	parameter_vector::start();
 
-	std::vector<affix_base::threading::persistent_thread> l_threads(2);
-
-	parallel_executor::startup(l_threads);
+	std::vector<affix_base::threading::persistent_thread> l_threads(std::thread::hardware_concurrency() / 2);
 
 	std::vector<std::vector<std::vector<std::vector<state_gradient_pair>>>> l_x(l_threads.size());
 	std::vector<state_gradient_pair*> l_y(l_threads.size());
 
-	join_threads();
+	join_threads(l_threads);
 
 	size_t l_parameter_index = parameter_vector::next_index();
 
@@ -78,7 +77,7 @@ void train_model(
 		std::cout << "THREAD LOADED: " << i << std::endl;
 	}
 
-	join_threads();
+	join_threads(l_threads);
 
 	auto l_desired_y = input(l_threads.size());
 
@@ -97,24 +96,27 @@ void train_model(
 	else
 		std::cout << "FAILED TO IMPORT PARAMETER VECTOR FROM FILE." << std::endl;
 
-	gradient_descent_with_momentum l_optimizer(l_parameter_vector, false, 0.002, 0.9);
+	gradient_descent_with_momentum l_optimizer(l_parameter_vector, true, 0.0002, 0.9);
 
 	std::vector<state_gradient_pair*> l_flattened_input;
 
 	for (auto& l_thread_specific_x : l_x)
 		l_flattened_input = concat(l_flattened_input, flatten(pointers(l_thread_specific_x)));
 
-	gradient_descent_with_momentum l_input_optimizer(l_flattened_input, true, 0.2, 0.9);
+	gradient_descent_with_momentum l_input_optimizer(l_flattened_input, true, 0.02, 0.9);
 
-	size_t l_machine_training_set_generation_interval = 100;
 	size_t l_export_parameter_vector_interval = 100;
 	size_t l_console_out_discriminator_cost_interval = 1;
 
 	CryptoPP::AutoSeededRandomPool l_random;
 
+	double l_discriminator_cost_momentum = 1;
+	double l_minimum_discriminator_cost_for_beginning_training_set_generation = 0.1;
+	double l_minimum_discriminator_cost_for_training_set_acceptance = 0.1;
+
 	for (int epoch = 0; true; epoch++)
 	{
-		if (epoch % l_machine_training_set_generation_interval == 0)
+		if (epoch == 0 || l_discriminator_cost_momentum < l_minimum_discriminator_cost_for_beginning_training_set_generation)
 		{
 			// Generate entirely new machine-made training sets.
 
@@ -130,13 +132,18 @@ void train_model(
 
 				double l_cost = 10000;
 
-				for (int l_generation_epoch = 0; l_cost > 0.1; l_generation_epoch++)
+				for (int l_generation_epoch = 0; l_cost > l_minimum_discriminator_cost_for_training_set_acceptance; l_generation_epoch++)
 				{
 					l_element_vector.fwd();
 					l_loss.m_partial_gradient = 1;
 					l_cost = l_loss.m_state;
 					l_element_vector.bwd();
 					l_input_optimizer.update();
+
+					// RESTRICT INPUT TO VALUES BETWEEN 0 AND 255
+					for (auto& l_x_element : l_flattened_input)
+						l_x_element->m_state = std::min(255.0, std::max(0.0, l_x_element->m_state));
+
 					l_input_optimizer.m_learn_rate = 200000 * std::log(l_cost + 1);
 					std::cout << "MACHINE TRAINING SET GENERATION COST: " << l_cost << std::endl;
 				}
@@ -167,16 +174,18 @@ void train_model(
 				size_t l_training_set_index = l_random.GenerateWord32(0, l_human_training_set_inputs.size() - 1);
 				set_state(pointers(l_x[i]), l_human_training_set_inputs[l_training_set_index]);
 			}
+			randomly_modulate_state(pointers(l_x[i]), -0.01, 0.01);
 		}
 
 		l_element_vector.fwd();
 		l_loss.m_partial_gradient = 1;
+		l_discriminator_cost_momentum = 0.9 * l_discriminator_cost_momentum + 0.1 * l_loss.m_state;
 		l_element_vector.bwd();
-		//l_optimizer.m_learn_rate = std::log(l_loss.m_state + 1);
+		l_optimizer.m_learn_rate = 0.02 * std::log(l_loss.m_state + 1);
 		l_optimizer.update();
 
 		if (epoch % l_console_out_discriminator_cost_interval == 0)
-			std::cout << "DISCRIMINATOR COST: " << l_loss.m_state << std::endl;
+			std::cout << "DISCRIMINATOR COST: " << l_discriminator_cost_momentum << std::endl;
 
 	}
 
