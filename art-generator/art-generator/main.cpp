@@ -55,64 +55,16 @@ void train_model(
 		std::cout << "IMPORTED TRAINING SET: " << l_entry.path().u8string() << std::endl;
 	}
 
-	element_vector::start();
-	parameter_vector::start();
-
-	std::vector<affix_base::threading::persistent_thread> l_threads(std::thread::hardware_concurrency() / 2);
-
-	std::vector<std::vector<std::vector<std::vector<state_gradient_pair>>>> l_x(l_threads.size());
-	std::vector<state_gradient_pair*> l_y(l_threads.size());
-
-	join_threads(l_threads);
-
-	size_t l_parameter_index = parameter_vector::next_index();
-
-	for (int i = 0; i < l_threads.size(); i++)
-	{
-		parameter_vector::next_index(l_parameter_index);
-		element_vector::start();
-		l_x[i] = input(3, l_acceptable_training_set_height, l_acceptable_training_set_width);
-		l_y[i] = art_generator::discriminate(pointers(l_x[i]));
-		parallel_branch(l_threads[i], element_vector::stop());
-		std::cout << "THREAD LOADED: " << i << std::endl;
-	}
-
-	join_threads(l_threads);
-
-	auto l_desired_y = input(l_threads.size());
-
-	std::vector<state_gradient_pair*> l_cross_entropy_ys(l_threads.size());
-
-	for (int i = 0; i < l_cross_entropy_ys.size(); i++)
-		l_cross_entropy_ys[i] = cross_entropy(l_y[i], &l_desired_y[i]);
-
-	auto l_loss = average(l_cross_entropy_ys)->depend();
-
-	element_vector l_element_vector = element_vector::stop();
-	parameter_vector l_parameter_vector = parameter_vector::stop(-0.1, 0.1);
-
-	if (import_params(l_parameter_vector))
-		std::cout << "IMPORTED PARAMETER VECTOR FROM FILE." << std::endl;
-	else
-		std::cout << "FAILED TO IMPORT PARAMETER VECTOR FROM FILE." << std::endl;
-
-	gradient_descent_with_momentum l_optimizer(l_parameter_vector, true, 0.0002, 0.9);
-
-	std::vector<state_gradient_pair*> l_flattened_input;
-
-	for (auto& l_thread_specific_x : l_x)
-		l_flattened_input = concat(l_flattened_input, flatten(pointers(l_thread_specific_x)));
-
-	gradient_descent_with_momentum l_input_optimizer(l_flattened_input, true, 0.02, 0.9);
+	std::vector<affix_base::threading::persistent_thread> l_threads(std::thread::hardware_concurrency() /  2);
 
 	size_t l_export_parameter_vector_interval = 100;
 	size_t l_console_out_discriminator_cost_interval = 1;
 
 	CryptoPP::AutoSeededRandomPool l_random;
-
+	
 	double l_discriminator_cost_momentum = 1;
 	double l_minimum_discriminator_cost_for_beginning_training_set_generation = 0.1;
-	double l_minimum_discriminator_cost_for_training_set_acceptance = 0.1;
+	double l_minimum_discriminator_cost_for_training_set_acceptance = 0.01;
 
 	for (int epoch = 0; true; epoch++)
 	{
@@ -140,11 +92,6 @@ void train_model(
 					l_element_vector.bwd();
 					l_input_optimizer.update();
 
-					// RESTRICT INPUT TO VALUES BETWEEN 0 AND 255
-					for (auto& l_x_element : l_flattened_input)
-						l_x_element->m_state = std::min(255.0, std::max(0.0, l_x_element->m_state));
-
-					l_input_optimizer.m_learn_rate = 200000 * std::log(l_cost + 1);
 					std::cout << "MACHINE TRAINING SET GENERATION COST: " << l_cost << std::endl;
 				}
 
@@ -181,7 +128,6 @@ void train_model(
 		l_loss.m_partial_gradient = 1;
 		l_discriminator_cost_momentum = 0.9 * l_discriminator_cost_momentum + 0.1 * l_loss.m_state;
 		l_element_vector.bwd();
-		l_optimizer.m_learn_rate = 0.02 * std::log(l_loss.m_state + 1);
 		l_optimizer.update();
 
 		if (epoch % l_console_out_discriminator_cost_interval == 0)
